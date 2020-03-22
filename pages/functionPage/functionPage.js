@@ -1,6 +1,114 @@
 // pages/funtionPage/funtionPage.js
 var app = getApp();
 var utils = require("../../utils/util.js");
+
+
+//-------------------------------------------
+function setVal(p, i, c, curPal) {
+  p[i] = curPal[c][0];
+  p[i + 1] = curPal[c][1];
+  p[i + 2] = curPal[c][2];
+  p[i + 3] = 255;
+}
+//-------------------------------------------
+function addVal(c, r, g, b, k) {
+  return [c[0] + (r * k) / 32, c[1] + (g * k) / 32, c[2] + (b * k) / 32];
+}
+
+function getErr(r, g, b, stdCol) {
+  r -= stdCol[0];
+  g -= stdCol[1];
+  b -= stdCol[2];
+  return r * r + g * g + b * b;
+}
+//-------------------------------------------
+function getNear(r, g, b, curPal) {
+  var ind = 0;
+  var err = getErr(r, g, b, curPal[0]);
+  for (var i = 1; i < curPal.length; i++) {
+    var cur = getErr(r, g, b, curPal[i]);
+    if (cur < err) { err = cur; ind = i; }
+  }
+  return ind;
+}
+
+//Floyd-Steinberg algurism
+function floydSteinberg(isYellow, pSrc, pDst) {
+  console.log("in floydSteinberg callback");
+  var dX, dY, dW = 640, dH = 384, sW = 640, sH = 384, index;
+  var curPal;
+  if (!isYellow)
+    curPal = [[0, 0, 0], [255, 255, 255]];
+  else
+    // black white yellow
+    curPal = [[0, 0, 0], [255, 255, 255], [220, 180, 0]];
+
+
+
+  var aInd = 0;
+  var bInd = 1;
+  var errArr = new Array(2);
+  errArr[0] = new Array(dW);
+  errArr[1] = new Array(dW);
+
+  for (var i = 0; i < dW; i++)
+    errArr[bInd][i] = [0, 0, 0];
+
+  for (var j = 0; j < dH; j++) {
+    var y = dY + j;
+
+    if ((y < 0) || (y >= sH)) {
+      for (var i = 0; i < dW; i++, index += 4)setVal(pDst, index, (i + j) % 2 == 0 ? 1 : 0, curPal);
+      console.log("invalid y : " + y)
+      continue;
+    }
+
+    aInd = ((bInd = aInd) + 1) & 1;
+    for (var i = 0; i < dW; i++)errArr[bInd][i] = [0, 0, 0];
+
+    for (var i = 0; i < dW; i++) {
+      var x = dX + i;
+
+      if ((x < 0) || (x >= sW)) {
+        setVal(pDst, index, (i + j) % 2 == 0 ? 1 : 0, curPal);
+        index += 4;
+        console.log("invalid x : " + x)
+        continue;
+      }
+
+      var pos = (y * sW + x) * 4;
+      var old = errArr[aInd][i];
+      var r = pSrc[pos] + old[0];
+      var g = pSrc[pos + 1] + old[1];
+      var b = pSrc[pos + 2] + old[2];
+      var colVal = curPal[getNear(r, g, b, curPal)];
+      pDst[index++] = colVal[0];
+      pDst[index++] = colVal[1];
+      pDst[index++] = colVal[2];
+      pDst[index++] = 255;
+      r = (r - colVal[0]);
+      g = (g - colVal[1]);
+      b = (b - colVal[2]);
+
+      if (i == 0) {
+        errArr[bInd][i] = addVal(errArr[bInd][i], r, g, b, 7.0);
+        errArr[bInd][i + 1] = addVal(errArr[bInd][i + 1], r, g, b, 2.0);
+        errArr[aInd][i + 1] = addVal(errArr[aInd][i + 1], r, g, b, 7.0);
+      } else if (i == dW - 1) {
+        errArr[bInd][i - 1] = addVal(errArr[bInd][i - 1], r, g, b, 7.0);
+        errArr[bInd][i] = addVal(errArr[bInd][i], r, g, b, 9.0);
+      } else {
+        errArr[bInd][i - 1] = addVal(errArr[bInd][i - 1], r, g, b, 3.0);
+        errArr[bInd][i] = addVal(errArr[bInd][i], r, g, b, 5.0);
+        errArr[bInd][i + 1] = addVal(errArr[bInd][i + 1], r, g, b, 1.0);
+        errArr[aInd][i + 1] = addVal(errArr[aInd][i + 1], r, g, b, 7.0);
+      }
+      //console.log("rgb : "+ colVal[0]+":"+colVal[1]+":"+colVal[2])
+    }
+  }
+}
+
+
 Page({
 
   /**
@@ -16,13 +124,16 @@ Page({
     writeCharacteristicId: "",
     notifyCharacteristicId: "",
     connected: true,
-    canWrite: false
+    canWrite: false,
+    imagesList: [],
+    monoimagedata: []
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {
+
     var that = this;
     var devid = decodeURIComponent(options.deviceId);
     var devname = decodeURIComponent(options.name);
@@ -36,8 +147,97 @@ Page({
     });
     //获取特征值
     that.getBLEDeviceCharacteristics();
+
+
+
+
   },
 
+  chooseImage: function () {
+    var that = this
+    wx.chooseImage({
+      count: 1, // 默认9
+      sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
+      sourceType: ['album', 'camera'], // 可以指定来源是相册还是相机，默认二者都有
+      success: function (res) {
+        console.log(res)
+        // 返回选定照片的本地文件路径列表，tempFilePath可以作为img标签的src属性显示图片
+        var tempFilePaths = res.tempFilePaths
+        that.setData({
+          imagesList: tempFilePaths
+        })
+        console.log(tempFilePaths[0])
+
+        const canvasctx = wx.createCanvasContext('canvassrc');
+
+
+        canvasctx.drawImage(tempFilePaths[0], 0, 0, 640, 384);
+        canvasctx.draw(false,
+          function () {
+
+            wx.canvasGetImageData({
+              canvasId: 'canvassrc',
+              x: 0,
+              y: 0,
+              width: 640,
+              height: 384,
+              success(res) {
+                console.log(res.width) // 100
+                console.log(res.height) // 100
+                console.log(res.data instanceof Uint8ClampedArray) // true
+                console.log(res.data.length) // 100 * 100 * 4
+
+                const dstData = new Uint8ClampedArray(res.data.length);
+
+
+
+
+
+                
+
+
+
+               // const canvasctx = wx.createCanvasContext('canvassrc');
+               // Canvas.createImageData(640,384)
+
+                //floydSteinberg(false, res.data, dstData);
+                //console.log(dstData)
+                // process image to 
+                console.log("now start to put image")
+                wx.canvasPutImageData({
+                  canvasId: 'canvasdst',
+                  x: 0,
+                  y: 0,
+                  width: 640,
+                  height: 384,
+                  data: dstData,
+                  success(res) {
+                    console.log("put image data success!");
+                  },
+                  fail() {
+                    console.log("put image data fail!")
+                  }
+                })
+              }
+            })
+          });
+
+
+
+      }
+    })
+  },
+
+
+
+
+  previewImage: function (e) {
+    var current = e.target.dataset.src;
+    wx.previewImage({
+      current: current, // 当前显示图片的http链接  
+      urls: this.data.imagesList // 需要预览的图片http链接列表  
+    })
+  },
   /**
    * 生命周期函数--监听页面显示
    */

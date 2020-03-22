@@ -47,7 +47,7 @@
 .function-button-div2 {
 	width: 100%;
 	position: relative;
-	top: 20px;	
+  height: 44px;
 }
 /*左边的功能按钮*/
 .function-button_left {
@@ -66,4 +66,42 @@
 	background-color: #f0ad4e;*/
 	float: left;
 	left: 14%;
+}
+
+
+
+.loadpic{
+  margin: 20px auto;
+  width: 500rpx;
+  height: 80rpx;
+  background: #d34c17;
+  text-align: center;
+  color: white;
+  line-height: 80rpx;
+}
+.previewimg{
+  padding: 10rpx;
+  float: left;
+}
+.image{
+  display: block;
+  width: 640rpx;
+  height: 384rpx;
+}
+.showPic{
+  width: 640rpx;
+  height: 384rpx;
+  margin: 0 auto;
+  width: 90%;
+  text-align: center;
+}
+
+.prevtext{
+  margin: 20px auto;
+  width: 500rpx;
+  height: 80rpx;
+  background: #d34c17;
+  text-align: center;
+  color: white;
+  line-height: 80rpx;
 }
