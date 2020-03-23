@@ -10,7 +10,7 @@
 <!-- 底部按钮 -->
 <view class='function-button-div'>
   <view class="function-button-div2">
-    <button type="primary" class='function-button_left' bindtap="sentOrder">发送</button>
+    <button type="primary" class='function-button_left' bindtap="sentOrder" disabled="{{monoimagedata.length===0}}">发送</button>
     <button type="primary" class='function-button_right' bindtap="closeBLEConnection">
       断开蓝牙连接
     </button>
