@@ -24,7 +24,7 @@ Page({
         canWrite: false,
         imagesList: [],
         monoimagedata: [],
-    
+
     },
 
     /**
@@ -58,7 +58,7 @@ Page({
                 var tempFilePaths = res.tempFilePaths
                 that.setData({
                     imagesList: tempFilePaths,
-                    monoimagedata:[]
+                    monoimagedata: []
                 })
 
                 console.log(tempFilePaths[0])
@@ -68,7 +68,7 @@ Page({
 
                 canvasctx.drawImage(tempFilePaths[0], 0, 0, 640, 384);
                 canvasctx.draw(false,
-                     ()=> {
+                    () => {
                         wx.canvasGetImageData({
                             canvasId: 'canvassrc',
                             x: 0,
@@ -82,17 +82,19 @@ Page({
                                 console.log(res.data.length) // 100 * 100 * 4
                                 const dstData = new Uint8ClampedArray(res.data);
                                 // 8bit 8 pix
-                                const epaperData = new Array(res.data.length / 8);
+                                //const epaperData = new Array(res.data.length / 8);
+                                var epaperDataArray = new Uint8Array(640 * 384 / 8);
+                                var epaperData = epaperDataArray;
                                 for (let y = 0; y < res.height; y++) {
                                     for (let x = 0; x < res.width; x++) {
                                         let oldPixel = dstData[px(x, y)];
                                         let newPixel = oldPixel > 125 ? 255 : 0;
-                                        
+
                                         // set epaper bit info
-                                        let position = y * res.width / 8;
-                                        if (newPixel === 255) { epaperData[position] = epaperData[position] & (0x01 << ((y * res.width) % 8)) }
+                                        let position = (y * res.width + x) / 8;
+                                        if (newPixel < 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
                                         else {
-                                            epaperData[position] = epaperData[position] | (~(0x01 << ((y * res.width) % 8)))
+                                            epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
                                         }
 
                                         // preview picture
@@ -104,12 +106,12 @@ Page({
                                         dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 1) / 16;
                                     }
                                 }
-                                
+
                                 console.log("now set epaper data")
                                 that.setData({
                                     monoimagedata: epaperData
                                 })
-                                
+
 
                                 console.log("now start to put image")
                                 wx.canvasPutImageData({
@@ -286,10 +288,12 @@ Page({
 
     //发送指令
     sentOrder: function () {
+        console.log("now send order to epaper")
         var that = this;
-        var orderStr = that.data.monoimagedata; //指令
-        let order = utils.stringToBytes(orderStr);
-        that.writeBLECharacteristicValue(order);
+        var order = that.data.monoimagedata; //指令
+        //  let order = utils.stringToBytes(orderStr);
+        console.log("now send order to epaper, data length is : " + order.byteLength);
+        that.writeBLECharacteristicValue(order.buffer);
     },
 
     //向低功耗蓝牙设备特征值中写入二进制数据。
@@ -297,11 +301,8 @@ Page({
     writeBLECharacteristicValue: function (order) {
         var that = this;
         let byteLength = order.byteLength;
-        var log = that.data.textLog + "当前执行指令的字节长度:" + byteLength + "\n";
-        that.setData({
-            textLog: log,
-        });
 
+        console.log("writeBLECharacteristicValue")
         wx.writeBLECharacteristicValue({
             deviceId: that.data.deviceId,
             serviceId: that.data.serviceId,
@@ -311,20 +312,14 @@ Page({
             success: function (res) {
                 if (byteLength > 20) {
                     setTimeout(function () {
-                        // that.writeBLECharacteristicValue(order.slice(20, byteLength));
-                    }, 150);
+                        that.writeBLECharacteristicValue(order.slice(20, byteLength));
+                    }, 0);
                 }
-                var log = that.data.textLog + "写入成功：" + res.errMsg + "\n";
-                that.setData({
-                    textLog: log,
-                });
+
             },
 
             fail: function (res) {
-                var log = that.data.textLog + "写入失败" + res.errMsg + "\n";
-                that.setData({
-                    textLog: log,
-                });
+
             }
         })
     },

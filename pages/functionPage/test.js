@@ -380,7 +380,7 @@ function uploadImage() {
         return u_send('EPD' + String.fromCharCode(epdInd + 97) + '_', false);
     }
 }
-
+/*
 floydSteinberg = {
     let ctx = DOM.canvas(data.width, data.height).getContext('2d');
     ctx.canvas.style.width = `${data.width * 2}px`;
@@ -419,3 +419,4 @@ floydSteinberg = {
     ctx.putImageData(clone, 0, 0);
     yield ctx.canvas;
   }
+  */

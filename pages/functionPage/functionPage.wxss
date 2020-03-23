@@ -89,10 +89,9 @@
   height: 384rpx;
 }
 .showPic{
-  width: 640rpx;
-  height: 384rpx;
+  width: 640px;
+  height: 384px;
   margin: 0 auto;
-  width: 90%;
   text-align: center;
 }
 
