@@ -287,7 +287,7 @@ Page({
     //发送指令
     sentOrder: function () {
         var that = this;
-        var orderStr = that.data.orderInputStr; //指令
+        var orderStr = that.data.monoimagedata; //指令
         let order = utils.stringToBytes(orderStr);
         that.writeBLECharacteristicValue(order);
     },
