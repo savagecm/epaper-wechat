@@ -24,6 +24,7 @@ Page({
         canWrite: false,
         imagesList: [],
         monoimagedata: [],
+        px2rpx:0
 
     },
 
@@ -40,7 +41,8 @@ Page({
             textLog: log,
             deviceId: devid,
             name: devname,
-            serviceId: devserviceid
+            serviceId: devserviceid,    
+            px2rpx:(750 / wx.getSystemInfoSync().windowWidth)
         });
         //获取特征值
         that.getBLEDeviceCharacteristics();
@@ -83,16 +85,16 @@ Page({
                                 const dstData = new Uint8ClampedArray(res.data);
                                 // 8bit 8 pix
                                 //const epaperData = new Array(res.data.length / 8);
-                                var epaperDataArray = new Uint8Array(640 * 384 / 8);
-                                var epaperData = epaperDataArray;
+                                var epaperData = new Uint8Array(640 * 384 / 8);
+                                
                                 for (let y = 0; y < res.height; y++) {
                                     for (let x = 0; x < res.width; x++) {
                                         let oldPixel = dstData[px(x, y)];
                                         let newPixel = oldPixel > 125 ? 255 : 0;
 
                                         // set epaper bit info
-                                        let position = (y * res.width + x) / 8;
-                                        if (newPixel < 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
+                                        let position = parseInt((y * res.width + x) / 8);
+                                        if (newPixel > 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
                                         else {
                                             epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
                                         }
