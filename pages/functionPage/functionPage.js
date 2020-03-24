@@ -67,9 +67,12 @@ Page({
 
                 console.log(tempFilePaths[0])
 
-                const canvasctx = wx.createCanvasContext('canvassrc');
+                const canvastmpctx = wx.createCanvasContext('canvassrc');
+                canvastmpctx.drawImage(tempFilePaths[0], 0,0,640*2.75,384*2.75,0,0, 640, 384);
+                canvastmpctx.draw();
 
-                canvasctx.drawImage(tempFilePaths[0], 0,0, 640, 384);
+                const canvasctx = wx.createCanvasContext('canvastmp');
+                canvasctx.drawImage(tempFilePaths[0], 0,0,640, 384);
                 canvasctx.draw(false,
                     () => {
                       wx.canvasGetImageData({
@@ -144,6 +147,8 @@ Page({
                       })
                     
                     });
+
+                    canvasctx.scale(0.25,0.25);
             }
         })
     },

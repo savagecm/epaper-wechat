@@ -89,11 +89,14 @@
   height: 384rpx;
 }
 .showPic{
-  width: 1500rpx;
-  height: 1056rpx;
+  width: 640rpx;
+  height: 384rpx;
 
 }
-
+.showPicAll{
+  width: 1500rpx;
+  height: 1500rpx;
+}
 .prevtext{
   margin: 20px auto;
   width: 500rpx;
