@@ -76,7 +76,7 @@ Page({
                 canvasctx.draw(false,
                     () => {
                       wx.canvasGetImageData({
-                          canvasId: 'canvassrc',
+                          canvasId: 'canvastmp',
                           x: 0,
                           y: 0,
                           width: 640,
@@ -123,6 +123,7 @@ Page({
                                       }
                                   }
                               }
+                            
                               console.log("now set epaper data")
                               that.setData({
                                   monoimagedata: epaperData
@@ -138,17 +139,32 @@ Page({
                                   data: dstData,
                                   success(res) {
                                       console.log("put image data success!");
+                                      const canvasdstctx = wx.createCanvasContext('canvasdst');
+                                      canvasdstctx.transform(0.364,0,0,0.364);
+                                      canvasdstctx.draw(true,()=>{
+                                     
+                                              console.log("preview scale success!");
+                                          
+                                        
+                                          }
+                                      );
+
                                   },
                                   fail() {
                                       console.log("put image data fail!")
                                   }
                               })
+                              console.log("now start to scale the tmp canvas")
+
+                              const canvasctx = wx.createCanvasContext('canvastmp');
+                              canvasctx.scale(0.1,0.1);
+                              canvasctx.draw();
                           }
                       })
                     
                     });
 
-                    canvasctx.scale(0.25,0.25);
+                   
             }
         })
     },

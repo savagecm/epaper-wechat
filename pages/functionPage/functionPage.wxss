@@ -89,6 +89,7 @@
   height: 384rpx;
 }
 .showPic{
+  display: block;
   width: 640rpx;
   height: 384rpx;
 
