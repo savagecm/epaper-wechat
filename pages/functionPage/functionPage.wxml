@@ -1,8 +1,8 @@
 <!-- pages/funtionPage/funtionPage.wxml -->
 <view class='loadpic' bindtap='chooseImage'>选择图片</view>
-<canvas canvas-id='canvassrc' style="width:640*{{px2rpx}} height:384*{{px2rpx}}"></canvas>
+<canvas canvas-id='canvassrc'  class='showPic'></canvas>
 <view class='prevtext' bindtap='chooseImage'>图片预览</view>
-<canvas canvas-id='canvasdst' style="width:640*{{px2rpx}} height:384*{{px2rpx}}"></canvas>
+<canvas canvas-id='canvasdst' class='showPic'></canvas>
 <!-- 底部按钮 closeBLEConnection -->
 <view class='function-button-div'>
   <view class="function-button-div2">

@@ -89,10 +89,9 @@
   height: 384rpx;
 }
 .showPic{
-  width: 640rpx;
-  height: 384rpx;
-  margin: 0 auto;
-  text-align: center;
+  width: 1500rpx;
+  height: 1056rpx;
+
 }
 
 .prevtext{

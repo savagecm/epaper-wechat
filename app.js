@@ -50,6 +50,13 @@ App({
   getSDKVersion: function() { //获取客户端基础库版本
     return this.globalData.sysinfo["SDKVersion"]
   },
+  getPixelRatio:function(){
+    return this.globalData.sysinfo["pixelRatio"] 
+  },
+
+  getWindowWidth:function(){
+    return this.globalData.sysinfo["windowWidth"] 
+  },
 
   //toast提示
   toastTips: function(txt) {

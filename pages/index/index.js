@@ -38,7 +38,7 @@ Page({
 
     var log = "获取微信版本号:" + app.getWxVersion() + "\n" +
       "获取客户端系统:" + app.getPlatform() + "\n" +
-      "系统版本:" + app.getSystem() + "\n";
+      "系统版本:" + app.getSystem() + "\n"+"像素比:"+app.getPixelRatio()+" 屏幕宽度 : "+app.getWindowWidth()+"\n";
     that.setData({
       textLog: log
     });
