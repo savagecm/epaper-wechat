@@ -425,15 +425,12 @@ Page({
         var order = that.data.monoimagedata; //指令
         //  let order = utils.stringToBytes(orderStr);
         console.log("now send order to epaper, data length is : " + order.byteLength);
+      
+        that.writeBLECharacteristicValue(order.buffer);
+  
         wx.showLoading({
             title: '发送中...',
         })
-        that.writeBLECharacteristicValue(order.buffer);
-        wx.hideLoading()
-        that.setData({ progress: 0 });
-        that.setData({
-            processing: false,
-        });
     },
 
 
@@ -455,6 +452,11 @@ Page({
         if (byteLength % 1000 == 0) {
             that.setData({ progress: Math.ceil((1 - byteLength / 30720) * 100) });
         }
+        if(byteLength<=20)
+        {
+            wx.hideLoading()
+            that.setData({ progress: 0 , processing:false});
+        }
 
         console.log("writeBLECharacteristicValue")
         wx.writeBLECharacteristicValue({
@@ -468,6 +470,9 @@ Page({
                     setTimeout(function () {
                         that.writeBLECharacteristicValue(order.slice(20, byteLength));
                     }, 0);
+                }
+                else{
+                   
                 }
 
             },
