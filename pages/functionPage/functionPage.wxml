@@ -14,5 +14,5 @@
     </button>
   </view>
 </view>
-
+<progress percent="{{progress}}" stroke-width="12" show-info wx:if="{{progress}}"/>
 <canvas canvas-id='canvastmp' class='showPicAll' wx:if="{{processing}}"></canvas>
