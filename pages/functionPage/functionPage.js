@@ -5,6 +5,10 @@ var utils = require("../../utils/util.js");
 function px(x, y) {
     return x * 4 + y * app.getWindowWidth() * 4;
 }
+function px640(x, y) {
+    return x * 4 + y * 640 * 4;
+}
+
 
 Page({
 
@@ -28,7 +32,7 @@ Page({
         graph: {},
         processing: false,
         imageReady: false,
-        progress:0
+        progress: 0
 
     },
 
@@ -71,10 +75,94 @@ Page({
                 var tempFilePaths = res.tempFilePaths
                 that.setData({
                     imagesList: tempFilePaths,
-                    imageReady: true
+                    imageReady: false
                 })
 
                 console.log(tempFilePaths[0])
+
+
+
+
+                wx.getImageInfo({
+                    src: that.data.imagesList[0],
+                    success(res) {
+                        console.log(res.width);
+                        console.log(res.height);
+                        const canvastmpctx = wx.createCanvasContext('canvastmp');
+                        let wdh = res.width / res.height;
+                        let appWidth = 640;
+                        let appHeight = 384;
+                        if (wdh > 640 / 384) {
+                            canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, 0, (appHeight - appWidth / wdh) / 2, appWidth, appWidth / wdh);
+                        }
+                        else {
+                            canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, (appWidth - appHeight * wdh) / 2, 0, appHeight * wdh, appHeight);
+                        }
+                        canvastmpctx.draw(false,
+                            () => {
+                                wx.canvasGetImageData({
+                                    canvasId: 'canvastmp',
+                                    x: 0,
+                                    y: 0,
+                                    width: 640,
+                                    height: 384,
+                                    success(res) {
+                                        console.log(res.width) // 100
+                                        console.log(res.height) // 100
+                                        console.log(res.data instanceof Uint8ClampedArray) // true
+                                        console.log(res.data.length) // 100 * 100 * 4
+                                        const dstData = new Uint8ClampedArray(res.data);
+                                        // 8bit 8 pix
+                                        //const epaperData = new Array(res.data.length / 8);
+                                        var epaperData = new Uint8Array(640 * 384 / 8);
+                                        for (let y = 0; y < res.height; y++) {
+                                            for (let x = 0; x < res.width; x++) {
+                                                let oldPixel = dstData[px640(x, y)];
+                                                let newPixel = oldPixel > 125 ? 255 : 0;
+                                                // set epaper bit info
+                                                let position = parseInt((y * res.width + x) / 8);
+                                                if (newPixel > 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
+                                                else {
+                                                    epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
+                                                }
+                                                // preview picture
+                                                dstData[px640(x, y)] = dstData[px640(x, y) + 1] = dstData[px640(x, y) + 2] = newPixel;
+                                                if (y == res.height - 1) {
+                                                    // for the last line, do not propagate
+                                                    continue;
+                                                }
+                                                let quantError = oldPixel - newPixel;
+                                                if (x == 0) {
+                                                    dstData[px640(x + 1, y)] = dstData[px640(x + 1, y) + 1] = dstData[px640(x + 1, y) + 2] = dstData[px640(x + 1, y)] + (quantError * 7) / 16;
+                                                    dstData[px640(x, y + 1)] = dstData[px640(x, y + 1) + 1] = dstData[px640(x, y + 1) + 2] = dstData[px640(x, y + 1)] + (quantError * 7) / 16;
+                                                    dstData[px640(x + 1, y + 1)] = dstData[px640(x + 1, y + 1) + 1] = dstData[px640(x + 1, y + 1) + 2] = dstData[px640(x + 1, y + 1)] + (quantError * 2) / 16;
+                                                } else if (x == res.width - 1) {
+                                                    dstData[px640(x - 1, y + 1)] = dstData[px640(x - 1, y + 1) + 1] = dstData[px640(x - 1, y + 1) + 2] = dstData[px640(x - 1, y + 1)] + (quantError * 7) / 16;
+                                                    dstData[px640(x, y + 1)] = dstData[px640(x, y + 1) + 1] = dstData[px640(x, y + 1) + 2] = dstData[px640(x, y + 1)] + (quantError * 9) / 16;
+                                                } else {
+                                                    dstData[px640(x + 1, y)] = dstData[px640(x + 1, y) + 1] = dstData[px640(x + 1, y) + 2] = dstData[px640(x + 1, y)] + (quantError * 7) / 16;
+                                                    dstData[px640(x - 1, y + 1)] = dstData[px640(x - 1, y + 1) + 1] = dstData[px640(x - 1, y + 1) + 2] = dstData[px640(x - 1, y + 1)] + (quantError * 3) / 16;
+                                                    dstData[px640(x, y + 1)] = dstData[px640(x, y + 1) + 1] = dstData[px640(x, y + 1) + 2] = dstData[px640(x, y + 1)] + (quantError * 5) / 16;
+                                                    dstData[px640(x + 1, y + 1)] = dstData[px640(x + 1, y + 1) + 1] = dstData[px640(x + 1, y + 1) + 2] = dstData[px640(x + 1, y + 1)] + (quantError * 1) / 16;
+                                                }
+                                            }
+                                        }
+
+                                       
+                                        that.setData({
+                                            processing: false,monoimagedata:epaperData
+                                        });
+                                    }
+                                })
+                            });
+                    }
+                });
+
+
+
+
+
+
 
                 wx.getImageInfo({
                     src: tempFilePaths[0],
@@ -153,6 +241,10 @@ Page({
                                         data: dstData,
                                         success(res) {
                                             console.log("put image data success!");
+
+
+
+
                                         },
                                         fail() {
                                             console.log("put image data fail!")
@@ -164,13 +256,6 @@ Page({
                     }
                 });
 
-
-
-
-
-                /*
-                              
-                */
 
             }
         })
@@ -335,90 +420,31 @@ Page({
             processing: true,
         });
 
-        wx.getImageInfo({
-            src: that.data.imagesList[0],
-            success(res) {
-                console.log(res.width);
-                console.log(res.height);
-                const canvastmpctx = wx.createCanvasContext('canvastmp');
-                let wdh = res.width / res.height;
-                let appWidth = 640;
-                let appHeight = 384;
-                if (wdh > 640 / 384) {
-                    canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, 0, (appHeight - appWidth / wdh) / 2, appWidth, appWidth / wdh);
-                }
-                else {
-                    canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, (appWidth - appHeight * wdh) / 2, 0, appHeight * wdh, appHeight);
-                }
-                canvastmpctx.draw(false,
-                    () => {
-                        wx.canvasGetImageData({
-                            canvasId: 'canvastmp',
-                            x: 0,
-                            y: 0,
-                            width: 640,
-                            height: 384,
-                            success(res) {
-                                console.log(res.width) // 100
-                                console.log(res.height) // 100
-                                console.log(res.data instanceof Uint8ClampedArray) // true
-                                console.log(res.data.length) // 100 * 100 * 4
-                                const dstData = new Uint8ClampedArray(res.data);
-                                // 8bit 8 pix
-                                //const epaperData = new Array(res.data.length / 8);
-                                var epaperData = new Uint8Array(640 * 384 / 8);
-                                for (let y = 0; y < res.height; y++) {
-                                    for (let x = 0; x < res.width; x++) {
-                                        let oldPixel = dstData[px(x, y)];
-                                        let newPixel = oldPixel > 125 ? 255 : 0;
-                                        // set epaper bit info
-                                        let position = parseInt((y * res.width + x) / 8);
-                                        if (newPixel > 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
-                                        else {
-                                            epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
-                                        }
-                                        // preview picture
-                                        dstData[px(x, y)] = dstData[px(x, y) + 1] = dstData[px(x, y) + 2] = newPixel;
-                                        if (y == res.height - 1) {
-                                            // for the last line, do not propagate
-                                            continue;
-                                        }
-                                        let quantError = oldPixel - newPixel;
-                                        if (x == 0) {
-                                            dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
-                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 7) / 16;
-                                            dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 2) / 16;
-                                        } else if (x == res.width - 1) {
-                                            dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 7) / 16;
-                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 9) / 16;
-                                        } else {
-                                            dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
-                                            dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 3) / 16;
-                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 5) / 16;
-                                            dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 1) / 16;
-                                        }
-                                    }
-                                }
-                                that.setData({
-                                    processing: false,
-                                });
-                                var order = epaperData; //指令
-                                //  let order = utils.stringToBytes(orderStr);
-                                console.log("now send order to epaper, data length is : " + order.byteLength);
-                                wx.showLoading({
-                                    title: '发送中...',
-                                  })
-                                that.writeBLECharacteristicValue(order.buffer);
-                                wx.hideLoading()
-                                that.setData({progress:0});
-                            }
-                        })
-                    });
-            }
+
+
+        var order = that.data.monoimagedata; //指令
+        //  let order = utils.stringToBytes(orderStr);
+        console.log("now send order to epaper, data length is : " + order.byteLength);
+        wx.showLoading({
+            title: '发送中...',
+        })
+        that.writeBLECharacteristicValue(order.buffer);
+        wx.hideLoading()
+        that.setData({ progress: 0 });
+        that.setData({
+            processing: false,
         });
-
-
     },
+
+
+
+    /*
+     
+    */
+
+
+
+
 
     //向低功耗蓝牙设备特征值中写入二进制数据。
     //注意：必须设备的特征值支持write才可以成功调用，具体参照 characteristic 的 properties 属性
@@ -426,9 +452,8 @@ Page({
     writeBLECharacteristicValue: function (order) {
         var that = this;
         let byteLength = order.byteLength;
-        if(byteLength%1000 == 0)
-        {
-            that.setData({progress:Math.ceil((1- byteLength/30720)*100)});
+        if (byteLength % 1000 == 0) {
+            that.setData({ progress: Math.ceil((1 - byteLength / 30720) * 100) });
         }
 
         console.log("writeBLECharacteristicValue")
