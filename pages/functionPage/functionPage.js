@@ -3,7 +3,7 @@ var app = getApp();
 var utils = require("../../utils/util.js");
 
 function px(x, y) {
-    return x * 4 + y * 640 * 4;
+    return x * 4 + y * app.getWindowWidth() * 4;
 }
 
 Page({
@@ -25,7 +25,9 @@ Page({
         imagesList: [],
         monoimagedata: [],
         px2rpx: 0,
-        graph: {}
+        graph: {},
+        processing: false,
+        imageReady: false
 
     },
 
@@ -51,7 +53,13 @@ Page({
     },
 
     chooseImage: function () {
-        var that = this
+        var that = this;
+        that.setData({
+            imagesList: '',
+            monoimagedata: [],
+            imageReady: false
+        })
+
         wx.chooseImage({
             count: 1, // 默认9
             sizeType: ['original', 'compressed'], // 可以指定是原图还是压缩图，默认二者都有
@@ -62,109 +70,107 @@ Page({
                 var tempFilePaths = res.tempFilePaths
                 that.setData({
                     imagesList: tempFilePaths,
-                    monoimagedata: []
+                    imageReady: true
                 })
 
                 console.log(tempFilePaths[0])
 
-                const canvastmpctx = wx.createCanvasContext('canvassrc');
-                canvastmpctx.drawImage(tempFilePaths[0], 0,0,640*2.75,384*2.75,0,0, 640, 384);
-                canvastmpctx.draw();
+                wx.getImageInfo({
+                    src: tempFilePaths[0],
+                    success(res) {
+                        console.log(res.width);
+                        console.log(res.height);
+                        const canvastmpctx = wx.createCanvasContext('canvassrc');
+                        let wdh = res.width / res.height;
 
-                const canvasctx = wx.createCanvasContext('canvastmp');
-                canvasctx.drawImage(tempFilePaths[0], 0,0,640, 384);
-                canvasctx.draw(false,
-                    () => {
-                      wx.canvasGetImageData({
-                          canvasId: 'canvastmp',
-                          x: 0,
-                          y: 0,
-                          width: 640,
-                          height: 384,
-                          success(res) {
-                              console.log(res.width) // 100
-                              console.log(res.height) // 100
-                              console.log(res.data instanceof Uint8ClampedArray) // true
-                              console.log(res.data.length) // 100 * 100 * 4
-                              const dstData = new Uint8ClampedArray(res.data);
-                              // 8bit 8 pix
-                              //const epaperData = new Array(res.data.length / 8);
-                              var epaperData = new Uint8Array(640 * 384 / 8);
-                              for (let y = 0; y < res.height; y++) {
-                                  for (let x = 0; x < res.width; x++) {                                 
-                                      let oldPixel = dstData[px(x, y)];
-                                      let newPixel = oldPixel > 125 ? 255 : 0;
-                                      // set epaper bit info
-                                      let position = parseInt((y * res.width + x) / 8);
-                                      if (newPixel > 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
-                                      else {
-                                          epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
-                                      }
-                                      // preview picture
-                                      dstData[px(x, y)] = dstData[px(x, y) + 1] = dstData[px(x, y) + 2] = newPixel;
-                                      if(y == res.height - 1)
-                                      {
-                                          // for the last line, do not propagate
-                                          continue;
-                                      }
-                                      let quantError = oldPixel - newPixel;
-                                      if (x == 0) {
-                                          dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
-                                          dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 7) / 16;
-                                          dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 2) / 16;
-                                      } else if (x == res.width - 1) {
-                                          dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 7) / 16;
-                                          dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 9) / 16;
-                                      } else {
-                                          dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
-                                          dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 3) / 16;
-                                          dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 5) / 16;
-                                          dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 1) / 16;
-                                      }
-                                  }
-                              }
-                            
-                              console.log("now set epaper data")
-                              that.setData({
-                                  monoimagedata: epaperData
-                              })
+                        let appWidth = Math.ceil(app.getWindowWidth());
+                        let appHeight = Math.ceil((384 / 640) * appWidth);
+                        if (wdh > 640 / 384) {
+                            canvastmpctx.drawImage(tempFilePaths[0], 0, 0, res.width, res.height, 0, (appHeight - appWidth / wdh) / 2, appWidth, appWidth / wdh);
+                        }
+                        else {
+                            canvastmpctx.drawImage(tempFilePaths[0], 0, 0, res.width, res.height, (appWidth - appHeight * wdh) / 2, 0, appHeight * wdh, appHeight);
+                        }
+                        canvastmpctx.draw(false, () => {
+                            that.setData({
+                                imageReady: true
+                            });
+                            wx.canvasGetImageData({
+                                canvasId: 'canvassrc',
+                                x: 0,
+                                y: 0,
+                                width: appWidth,
+                                height: appHeight,
+                                success(res) {
+                                    console.log(res.width) // 100
+                                    console.log(res.height) // 100
+                                    console.log(res.data instanceof Uint8ClampedArray) // true
+                                    console.log(res.data.length) // 100 * 100 * 4
+                                    const dstData = new Uint8ClampedArray(res.data);
 
-                              console.log("now start to put image")
-                              wx.canvasPutImageData({
-                                  canvasId: 'canvasdst',
-                                  x: 0,
-                                  y: 0,
-                                  width: 640,
-                                  height: 384,
-                                  data: dstData,
-                                  success(res) {
-                                      console.log("put image data success!");
-                                      const canvasdstctx = wx.createCanvasContext('canvasdst');
-                                      canvasdstctx.transform(0.364,0,0,0.364);
-                                      canvasdstctx.draw(true,()=>{
-                                     
-                                              console.log("preview scale success!");
-                                          
-                                        
-                                          }
-                                      );
 
-                                  },
-                                  fail() {
-                                      console.log("put image data fail!")
-                                  }
-                              })
-                              console.log("now start to scale the tmp canvas")
 
-                              const canvasctx = wx.createCanvasContext('canvastmp');
-                              canvasctx.scale(0.1,0.1);
-                              canvasctx.draw();
-                          }
-                      })
-                    
-                    });
 
-                   
+                                    for (let y = 0; y < res.height; y++) {
+                                        for (let x = 0; x < res.width; x++) {
+                                            let oldPixel = dstData[px(x, y)];
+                                            let newPixel = oldPixel > 125 ? 255 : 0;
+
+                                            // preview picture
+                                            dstData[px(x, y)] = dstData[px(x, y) + 1] = dstData[px(x, y) + 2] = newPixel;
+                                            // dstData[px(x, y)+3] = 255
+                                            if (y == res.height - 1) {
+                                                // for the last line, do not propagate
+                                                continue;
+                                            }
+                                            let quantError = oldPixel - newPixel;
+                                            if (x == 0) {
+                                                dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
+                                                dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 7) / 16;
+                                                dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 2) / 16;
+                                            } else if (x == res.width - 1) {
+                                                dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 7) / 16;
+                                                dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 9) / 16;
+                                            } else {
+                                                dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
+                                                dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 3) / 16;
+                                                dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 5) / 16;
+                                                dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 1) / 16;
+                                            }
+
+                                        }
+                                    }
+
+                                    // console.log(dstData)
+                                    console.log("now start to put image")
+                                    wx.canvasPutImageData({
+                                        canvasId: 'canvasdst',
+                                        x: 0,
+                                        y: 0,
+                                        width: appWidth,
+                                        height: appHeight,
+                                        data: dstData,
+                                        success(res) {
+                                            console.log("put image data success!");
+                                        },
+                                        fail() {
+                                            console.log("put image data fail!")
+                                        }
+                                    })
+                                }
+                            })
+                        });
+                    }
+                });
+
+
+
+
+
+                /*
+                              
+                */
+
             }
         })
     },
@@ -324,10 +330,88 @@ Page({
     sentOrder: function () {
         console.log("now send order to epaper")
         var that = this;
-        var order = that.data.monoimagedata; //指令
-        //  let order = utils.stringToBytes(orderStr);
-        console.log("now send order to epaper, data length is : " + order.byteLength);
-        that.writeBLECharacteristicValue(order.buffer);
+        that.setData({
+            processing: true,
+        });
+
+        wx.getImageInfo({
+            src: that.data.imagesList[0],
+            success(res) {
+                console.log(res.width);
+                console.log(res.height);
+                const canvastmpctx = wx.createCanvasContext('canvastmp');
+                let wdh = res.width / res.height;
+                let appWidth = 640;
+                let appHeight = 384;
+                if (wdh > 640 / 384) {
+                    canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, 0, (appHeight - appWidth / wdh) / 2, appWidth, appWidth / wdh);
+                }
+                else {
+                    canvastmpctx.drawImage(that.data.imagesList[0], 0, 0, res.width, res.height, (appWidth - appHeight * wdh) / 2, 0, appHeight * wdh, appHeight);
+                }
+                canvastmpctx.draw(false,
+                    () => {
+                        wx.canvasGetImageData({
+                            canvasId: 'canvastmp',
+                            x: 0,
+                            y: 0,
+                            width: 640,
+                            height: 384,
+                            success(res) {
+                                console.log(res.width) // 100
+                                console.log(res.height) // 100
+                                console.log(res.data instanceof Uint8ClampedArray) // true
+                                console.log(res.data.length) // 100 * 100 * 4
+                                const dstData = new Uint8ClampedArray(res.data);
+                                // 8bit 8 pix
+                                //const epaperData = new Array(res.data.length / 8);
+                                var epaperData = new Uint8Array(640 * 384 / 8);
+                                for (let y = 0; y < res.height; y++) {
+                                    for (let x = 0; x < res.width; x++) {
+                                        let oldPixel = dstData[px(x, y)];
+                                        let newPixel = oldPixel > 125 ? 255 : 0;
+                                        // set epaper bit info
+                                        let position = parseInt((y * res.width + x) / 8);
+                                        if (newPixel > 125) { epaperData[position] = epaperData[position] | (0x01 << ((y * res.width + x) % 8)) }
+                                        else {
+                                            epaperData[position] = epaperData[position] & (~(0x01 << ((y * res.width + x) % 8)))
+                                        }
+                                        // preview picture
+                                        dstData[px(x, y)] = dstData[px(x, y) + 1] = dstData[px(x, y) + 2] = newPixel;
+                                        if (y == res.height - 1) {
+                                            // for the last line, do not propagate
+                                            continue;
+                                        }
+                                        let quantError = oldPixel - newPixel;
+                                        if (x == 0) {
+                                            dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
+                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 7) / 16;
+                                            dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 2) / 16;
+                                        } else if (x == res.width - 1) {
+                                            dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 7) / 16;
+                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 9) / 16;
+                                        } else {
+                                            dstData[px(x + 1, y)] = dstData[px(x + 1, y) + 1] = dstData[px(x + 1, y) + 2] = dstData[px(x + 1, y)] + (quantError * 7) / 16;
+                                            dstData[px(x - 1, y + 1)] = dstData[px(x - 1, y + 1) + 1] = dstData[px(x - 1, y + 1) + 2] = dstData[px(x - 1, y + 1)] + (quantError * 3) / 16;
+                                            dstData[px(x, y + 1)] = dstData[px(x, y + 1) + 1] = dstData[px(x, y + 1) + 2] = dstData[px(x, y + 1)] + (quantError * 5) / 16;
+                                            dstData[px(x + 1, y + 1)] = dstData[px(x + 1, y + 1) + 1] = dstData[px(x + 1, y + 1) + 2] = dstData[px(x + 1, y + 1)] + (quantError * 1) / 16;
+                                        }
+                                    }
+                                }
+                                that.setData({
+                                    processing: false,
+                                });
+                                var order = epaperData; //指令
+                                //  let order = utils.stringToBytes(orderStr);
+                                console.log("now send order to epaper, data length is : " + order.byteLength);
+                                that.writeBLECharacteristicValue(order.buffer);
+                            }
+                        })
+                    });
+            }
+        });
+
+
     },
 
     //向低功耗蓝牙设备特征值中写入二进制数据。

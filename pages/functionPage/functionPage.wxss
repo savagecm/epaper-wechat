@@ -71,7 +71,7 @@
 
 
 .loadpic{
-  margin: 20px auto;
+  margin: 2px auto;
   width: 500rpx;
   height: 80rpx;
   background: #d34c17;
@@ -90,8 +90,8 @@
 }
 .showPic{
   display: block;
-  width: 640rpx;
-  height: 384rpx;
+  width: 750rpx;
+  height: 450rpx;
 
 }
 .showPicAll{
@@ -99,7 +99,7 @@
   height: 1500rpx;
 }
 .prevtext{
-  margin: 20px auto;
+  margin: 2px auto;
   width: 500rpx;
   height: 80rpx;
   background: #d34c17;

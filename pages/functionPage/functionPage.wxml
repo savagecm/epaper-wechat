@@ -6,7 +6,7 @@
 <!-- 底部按钮 closeBLEConnection -->
 <view class='function-button-div'>
   <view class="function-button-div2">
-    <button type="primary" class='function-button_left' bindtap="sentOrder" disabled="{{monoimagedata.length===0}}">
+    <button type="primary" class='function-button_left' bindtap="sentOrder" disabled="{{!imageReady}}">
       发送
     </button>
     <button type="primary" class='function-button_right' bindtap="closeBLEConnection">
@@ -15,4 +15,4 @@
   </view>
 </view>
 
-<canvas canvas-id='canvastmp' class='showPicAll'></canvas>
+<canvas canvas-id='canvastmp' class='showPicAll' wx:if="{{processing}}"></canvas>

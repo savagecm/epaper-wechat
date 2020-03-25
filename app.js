@@ -57,6 +57,9 @@ App({
   getWindowWidth:function(){
     return this.globalData.sysinfo["windowWidth"] 
   },
+  getWindowHeight:function(){
+    return this.globalData.sysinfo["windowHeight"] 
+  },
 
   //toast提示
   toastTips: function(txt) {
